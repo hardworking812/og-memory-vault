@@ -76,4 +76,21 @@ router.delete("/delete/:eventId",authMiddleware, async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+
+router.put("/update/:id", authMiddleware, async (req, res) => {
+  try {
+    const { title, description, date } = req.body;
+
+    const updatedEvent = await Event.findByIdAndUpdate(
+      req.params.id,
+      { title, description, date },
+      { new: true }
+    );
+
+    res.json(updatedEvent);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 module.exports = router;
