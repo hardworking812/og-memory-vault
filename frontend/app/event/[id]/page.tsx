@@ -17,6 +17,7 @@ export default function EventPage() {
   const [media, setMedia] = useState<MediaType[]>([]);
   const [selected, setSelected] = useState<MediaType | null>(null);
   const [mounted, setMounted] = useState(false);
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -43,27 +44,47 @@ export default function EventPage() {
 
   if (!mounted) return null;
 
-  // Upload without reload
+  /* ===========================
+     MULTIPLE FILE UPLOAD
+  ============================ */
   const handleUpload = async (e: any) => {
-    const file = e.target.files[0];
-    if (!file) return;
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    setUploading(true);
 
     const token = localStorage.getItem("token");
-    const formData = new FormData();
-    formData.append("file", file);
 
-    const res = await fetch(`${API}/api/media/upload/${id}`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-      body: formData,
-    });
+    for (let i = 0; i < files.length; i++) {
+      const formData = new FormData();
+      formData.append("file", files[i]);
 
-    const data = await res.json();
-    setMedia((prev) => [data.media, ...prev]);
+      try {
+        const res = await fetch(`${API}/api/media/upload/${id}`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          body: formData,
+        });
+
+        const data = await res.json();
+
+        if (data.media) {
+          setMedia((prev) => [data.media, ...prev]);
+        }
+      } catch (err) {
+        console.error("Upload failed:", err);
+      }
+    }
+
+    setUploading(false);
+    e.target.value = ""; // reset input
   };
 
+  /* ===========================
+     DELETE MEDIA
+  ============================ */
   const handleDelete = async (mediaId: string) => {
     const token = localStorage.getItem("token");
 
@@ -77,9 +98,13 @@ export default function EventPage() {
     setMedia((prev) => prev.filter((m) => m._id !== mediaId));
   };
 
+  /* ===========================
+     DOWNLOAD MEDIA
+  ============================ */
   const handleDownload = async (url: string) => {
     const response = await fetch(url);
     const blob = await response.blob();
+
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
     link.download = "memory";
@@ -108,13 +133,16 @@ export default function EventPage() {
       {/* Upload Section */}
       <div className="max-w-6xl mx-auto mb-12">
         <label className="flex flex-col items-center justify-center border-2 border-dashed border-white/20 rounded-3xl p-10 cursor-pointer hover:bg-white/5 transition backdrop-blur-lg">
-          <span className="text-lg mb-2">Upload Memories</span>
+          <span className="text-lg mb-2">
+            {uploading ? "Uploading..." : "Upload Memories"}
+          </span>
           <span className="text-sm text-gray-400">
-            Click to select image or video
+            Click to select multiple images or videos
           </span>
 
           <input
             type="file"
+            multiple
             onChange={handleUpload}
             className="hidden"
           />
@@ -141,7 +169,7 @@ export default function EventPage() {
               />
             )}
 
-            {/* Download Button */}
+            {/* Download */}
             <button
               onClick={(e) => {
                 e.stopPropagation();
@@ -152,7 +180,7 @@ export default function EventPage() {
               Download
             </button>
 
-            {/* Delete Button */}
+            {/* Delete */}
             <button
               onClick={(e) => {
                 e.stopPropagation();
