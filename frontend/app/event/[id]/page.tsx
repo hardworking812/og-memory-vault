@@ -37,7 +37,7 @@ export default function EventPage() {
     })
       .then((res) => res.json())
       .then((data) => setMedia(data))
-      .catch((err) => console.error(err));
+      .catch(console.error);
   }, [mounted, id]);
 
   if (!mounted) return null;
@@ -47,7 +47,6 @@ export default function EventPage() {
     if (!file) return;
 
     const token = localStorage.getItem("token");
-
     const formData = new FormData();
     formData.append("file", file);
 
@@ -76,47 +75,69 @@ export default function EventPage() {
   };
 
   return (
-    <main className="min-h-screen bg-black text-white p-10">
-      <button
-        onClick={() => router.push("/")}
-        className="mb-6 bg-white text-black px-4 py-2 rounded"
-      >
-        Back
-      </button>
+    <main className="min-h-screen bg-gradient-to-br from-black via-gray-900 to-black text-white px-6 py-12">
 
-      <h1 className="text-3xl font-bold mb-6">Event Gallery</h1>
+      {/* Header */}
+      <div className="max-w-6xl mx-auto flex justify-between items-center mb-10">
+        <button
+          onClick={() => router.push("/")}
+          className="bg-white/10 hover:bg-white/20 transition px-4 py-2 rounded-xl border border-white/20"
+        >
+          ← Back
+        </button>
 
-      <input
-        type="file"
-        onChange={handleUpload}
-        className="mb-8"
-      />
+        <h1 className="text-3xl font-bold">Event Gallery</h1>
 
-      <div className="grid md:grid-cols-3 gap-6">
+        <div />
+      </div>
+
+      {/* Upload Section */}
+      <div className="max-w-6xl mx-auto mb-12">
+        <label className="flex flex-col items-center justify-center border-2 border-dashed border-white/20 rounded-3xl p-10 cursor-pointer hover:bg-white/5 transition backdrop-blur-lg">
+          <span className="text-lg mb-2">Upload Memories</span>
+          <span className="text-sm text-gray-400">
+            Click to select image or video
+          </span>
+
+          <input
+            type="file"
+            onChange={handleUpload}
+            className="hidden"
+          />
+        </label>
+      </div>
+
+      {/* Media Grid */}
+      <div className="max-w-6xl mx-auto grid sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
         {media.map((item) => (
-          <div key={item._id} className="relative">
+          <div
+            key={item._id}
+            className="relative group bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl overflow-hidden shadow-lg"
+          >
             {item.fileType === "image" ? (
               <img
                 src={item.fileUrl}
-                className="rounded-xl"
+                className="w-full h-72 object-cover"
               />
             ) : (
               <video
                 src={item.fileUrl}
                 controls
-                className="rounded-xl"
+                className="w-full h-72 object-cover"
               />
             )}
 
+            {/* Delete Overlay */}
             <button
               onClick={() => handleDelete(item._id)}
-              className="absolute top-2 right-2 bg-red-600 px-2 py-1 rounded"
+              className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition bg-red-600 px-3 py-1 rounded-lg text-sm"
             >
               Delete
             </button>
           </div>
         ))}
       </div>
+
     </main>
   );
 }
