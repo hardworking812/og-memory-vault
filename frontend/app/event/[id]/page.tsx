@@ -1,163 +1,122 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 
 interface MediaType {
   _id: string;
   fileUrl: string;
-  publicId?: string;
   fileType: string;
 }
 
 export default function EventPage() {
-  const params = useParams();
-  const eventId = params.id as string;
+  const { id } = useParams();
+  const router = useRouter();
+  const API = process.env.NEXT_PUBLIC_API_URL;
 
   const [media, setMedia] = useState<MediaType[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [uploading, setUploading] = useState(false);
-  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);
 
-  // Fetch Media
   useEffect(() => {
-    if (!eventId) return;
+    setMounted(true);
+  }, []);
 
-    fetch(`http://localhost:5000/api/media/event/${eventId}`)
-      .then((res) => res.json())
-      .then((data) => {
-        setMedia(data);
-        setLoading(false);
-      })
-      .catch((err) => {
-        console.error("Error fetching media:", err);
-        setLoading(false);
-      });
-  }, [eventId]);
+  useEffect(() => {
+    if (!mounted) return;
 
-  // Upload Handler
-  const handleUpload = async (file: File) => {
-    try {
-      setUploading(true);
-
-      const formData = new FormData();
-      formData.append("file", file);
-
-      const response = await fetch(
-        `http://localhost:5000/api/media/upload/${eventId}`,
-        {
-          method: "POST",
-          body: formData,
-        }
-      );
-
-      const data = await response.json();
-
-      if (response.ok) {
-        setMedia((prev) => [data.media, ...prev]);
-      }
-
-      setUploading(false);
-    } catch (error) {
-      console.error(error);
-      setUploading(false);
+    const token = localStorage.getItem("token");
+    if (!token) {
+      router.replace("/auth");
+      return;
     }
+
+    fetch(`${API}/api/media/${id}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    })
+      .then((res) => res.json())
+      .then((data) => setMedia(data))
+      .catch((err) => console.error(err));
+  }, [mounted, id]);
+
+  if (!mounted) return null;
+
+  const handleUpload = async (e: any) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const token = localStorage.getItem("token");
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    await fetch(`${API}/api/media/upload/${id}`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body: formData,
+    });
+
+    window.location.reload();
   };
 
-  // Delete Handler
   const handleDelete = async (mediaId: string) => {
-    try {
-      await fetch(
-        `http://localhost:5000/api/media/delete/${mediaId}`,
-        { method: "DELETE" }
-      );
+    const token = localStorage.getItem("token");
 
-      setMedia((prev) =>
-        prev.filter((item) => item._id !== mediaId)
-      );
-    } catch (error) {
-      console.error("Delete failed:", error);
-    }
+    await fetch(`${API}/api/media/delete/${mediaId}`, {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    setMedia((prev) => prev.filter((m) => m._id !== mediaId));
   };
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-black via-gray-900 to-black text-white p-10">
+    <main className="min-h-screen bg-black text-white p-10">
+      <button
+        onClick={() => router.push("/")}
+        className="mb-6 bg-white text-black px-4 py-2 rounded"
+      >
+        Back
+      </button>
 
-      {/* Title */}
-      <h1 className="text-4xl font-bold text-center mb-10">
-        Event Gallery
-      </h1>
+      <h1 className="text-3xl font-bold mb-6">Event Gallery</h1>
 
-      {/* Upload Button */}
-      <div className="flex justify-center mb-10">
-        <label className="bg-white/10 border border-white/20 px-6 py-3 rounded-xl cursor-pointer hover:bg-white/20 transition">
-          {uploading ? "Uploading..." : "Upload Memory"}
-          <input
-            type="file"
-            hidden
-            onChange={(e) => {
-              if (e.target.files && e.target.files[0]) {
-                handleUpload(e.target.files[0]);
-              }
-            }}
-          />
-        </label>
-      </div>
+      <input
+        type="file"
+        onChange={handleUpload}
+        className="mb-8"
+      />
 
-      {/* Loading State */}
-      {loading && (
-        <p className="text-center text-gray-400">Loading memories...</p>
-      )}
-
-      {/* Gallery Grid */}
-      <div className="grid sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+      <div className="grid md:grid-cols-3 gap-6">
         {media.map((item) => (
-            <div
-                key={item._id}
-                className="relative rounded-2xl overflow-hidden shadow-lg group cursor-pointer"
-                >
-                {/* Delete Button */}
-                <button
-                    onClick={(e) => {
-                    e.stopPropagation();
-                    handleDelete(item._id);
-                    }}
-                    className="absolute top-3 right-3 bg-red-600 text-white px-3 py-1 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-20"
-                >
-                    Delete
-                </button>
+          <div key={item._id} className="relative">
+            {item.fileType === "image" ? (
+              <img
+                src={item.fileUrl}
+                className="rounded-xl"
+              />
+            ) : (
+              <video
+                src={item.fileUrl}
+                controls
+                className="rounded-xl"
+              />
+            )}
 
-                {item.fileType === "image" ? (
-                    <img
-                    src={item.fileUrl}
-                    alt="memory"
-                    className="w-full h-72 object-cover transition-transform duration-300 group-hover:scale-105"
-                    onClick={() => setSelectedImage(item.fileUrl)}
-                    />
-                ) : (
-                    <video
-                    src={item.fileUrl}
-                    controls
-                    className="w-full h-72"
-                    />
-                )}
-            </div>
+            <button
+              onClick={() => handleDelete(item._id)}
+              className="absolute top-2 right-2 bg-red-600 px-2 py-1 rounded"
+            >
+              Delete
+            </button>
+          </div>
         ))}
       </div>
-
-      {/* Fullscreen Modal */}
-      {selectedImage && (
-        <div
-          className="fixed inset-0 bg-black/90 flex items-center justify-center z-50"
-          onClick={() => setSelectedImage(null)}
-        >
-          <img
-            src={selectedImage}
-            alt="fullscreen"
-            className="max-h-[90vh] max-w-[90vw] rounded-xl shadow-2xl"
-          />
-        </div>
-      )}
     </main>
   );
 }
