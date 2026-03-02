@@ -30,7 +30,7 @@ export default function EventPage() {
       return;
     }
 
-    fetch(`${API}/api/media/${id}`, {
+    fetch(`${API}/api/media/event/${id}`, {
       headers: {
         Authorization: `Bearer ${token}`,
       },
