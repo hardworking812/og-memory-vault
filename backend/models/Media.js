@@ -1,17 +1,17 @@
 const mongoose = require("mongoose");
 
-const MediaSchema = new mongoose.Schema({
+const mediaSchema = new mongoose.Schema({
   eventId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: "Event"
+    ref: "Event",
   },
   fileUrl: String,
+  public_id: String,   // ✅ ADD THIS
   fileType: String,
-  originalSize: Number,
   createdAt: {
     type: Date,
-    default: Date.now
-  }
+    default: Date.now,
+  },
 });
 
-module.exports = mongoose.model("Media", MediaSchema);
+module.exports = mongoose.model("Media", mediaSchema);

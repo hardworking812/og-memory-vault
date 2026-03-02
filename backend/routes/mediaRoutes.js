@@ -5,60 +5,74 @@ const cloudinary = require("../config/cloudinary");
 const Media = require("../models/Media");
 const authMiddleware = require("../middleware/authMiddleware");
 
-// Store file in memory (keeps original resolution)
+/* =========================================
+   Multer Setup (Memory Storage)
+========================================= */
 const storage = multer.memoryStorage();
 const upload = multer({ storage });
 
 /* =========================================
    Upload Media
 ========================================= */
-router.post("/upload/:eventId",authMiddleware, upload.single("file"), async (req, res) => {
-  try {
-    const { eventId } = req.params;
+router.post(
+  "/upload/:eventId",
+  authMiddleware,
+  upload.single("file"),
+  async (req, res) => {
+    try {
+      const { eventId } = req.params;
 
-    if (!req.file) {
-      return res.status(400).json({ message: "No file uploaded" });
-    }
+      if (!req.file) {
+        return res.status(400).json({ message: "No file uploaded" });
+      }
 
-    const streamUpload = () => {
-      return new Promise((resolve, reject) => {
-        const stream = cloudinary.uploader.upload_stream(
-          { resource_type: "auto" },
-          (error, result) => {
-            if (result) resolve(result);
-            else reject(error);
-          }
-        );
-        stream.end(req.file.buffer);
-      });
-    };
+      // Upload to Cloudinary using stream
+      const streamUpload = () => {
+        return new Promise((resolve, reject) => {
+          const stream = cloudinary.uploader.upload_stream(
+            {
+              folder: "og-memory-vault",
+              resource_type: "auto",
+            },
+            (error, result) => {
+              if (result) resolve(result);
+              else reject(error);
+            }
+          );
 
-    const result = await streamUpload();
+          stream.end(req.file.buffer);
+        });
+      };
 
-    const newMedia = new Media({
+      const result = await streamUpload();
+
+      // Save in MongoDB
+      const newMedia = new Media({
         eventId,
         fileUrl: result.secure_url,
-        publicId: result.public_id, // IMPORTANT
+        publicId: result.public_id, // ✅ VERY IMPORTANT
         fileType: result.resource_type,
-        originalSize: result.bytes
-    });
+        originalSize: result.bytes,
+      });
 
-    await newMedia.save();
+      await newMedia.save();
 
-    res.status(201).json({
-      message: "File uploaded successfully",
-      media: newMedia
-    });
+      res.status(201).json({
+        message: "File uploaded successfully",
+        media: newMedia,
+      });
 
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+    } catch (error) {
+      console.error("Upload Error:", error);
+      res.status(500).json({ error: error.message });
+    }
   }
-});
+);
 
 /* =========================================
    Get Media By Event
 ========================================= */
-router.get("/event/:eventId",authMiddleware, async (req, res) => {
+router.get("/event/:eventId", authMiddleware, async (req, res) => {
   try {
     const { eventId } = req.params;
 
@@ -67,12 +81,15 @@ router.get("/event/:eventId",authMiddleware, async (req, res) => {
     res.status(200).json(media);
 
   } catch (error) {
+    console.error("Fetch Media Error:", error);
     res.status(500).json({ error: error.message });
   }
 });
 
-// Delete Media
-router.delete("/delete/:mediaId",authMiddleware, async (req, res) => {
+/* =========================================
+   Delete Media
+========================================= */
+router.delete("/delete/:mediaId", authMiddleware, async (req, res) => {
   try {
     const { mediaId } = req.params;
 
@@ -82,23 +99,24 @@ router.delete("/delete/:mediaId",authMiddleware, async (req, res) => {
       return res.status(404).json({ message: "Media not found" });
     }
 
-    // Try deleting from Cloudinary (if publicId exists)
+    // Delete from Cloudinary if publicId exists
     if (media.publicId) {
       try {
         await cloudinary.uploader.destroy(media.publicId, {
-          resource_type: media.fileType
+          resource_type: media.fileType || "image",
         });
       } catch (err) {
         console.log("Cloudinary delete failed:", err.message);
       }
     }
 
-    // Always delete from MongoDB
+    // Delete from MongoDB
     await Media.findByIdAndDelete(mediaId);
 
     res.status(200).json({ message: "Media deleted successfully" });
 
   } catch (error) {
+    console.error("Delete Error:", error);
     res.status(500).json({ error: error.message });
   }
 });
