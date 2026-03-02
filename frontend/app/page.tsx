@@ -16,16 +16,15 @@ export default function Home() {
   const API = process.env.NEXT_PUBLIC_API_URL;
 
   const [events, setEvents] = useState<EventType[]>([]);
-  const [storage, setStorage] = useState<{ used: number; limit: number } | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [storage, setStorage] = useState<any>(null);
   const [mounted, setMounted] = useState(false);
   const [showModal, setShowModal] = useState(false);
+  const [editingEvent, setEditingEvent] = useState<EventType | null>(null);
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [date, setDate] = useState("");
 
-  // Prevent hydration issues
   useEffect(() => {
     setMounted(true);
   }, []);
@@ -34,43 +33,39 @@ export default function Home() {
     if (!mounted) return;
 
     const token = localStorage.getItem("token");
-
     if (!token) {
       router.replace("/auth");
       return;
     }
 
-    // Fetch events
     fetch(`${API}/api/events/all`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
+      headers: { Authorization: `Bearer ${token}` },
     })
       .then((res) => res.json())
-      .then((data) => setEvents(data))
-      .catch(console.error);
+      .then(setEvents);
 
-    // Fetch storage usage
     fetch(`${API}/api/admin/storage`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
+      headers: { Authorization: `Bearer ${token}` },
     })
       .then((res) => res.json())
-      .then((data) => setStorage(data))
-      .catch(console.error)
-      .finally(() => setLoading(false));
+      .then(setStorage);
   }, [mounted]);
 
   if (!mounted) return null;
 
-  const handleCreateEvent = async () => {
+  const handleSaveEvent = async () => {
     if (!title || !date) return;
 
     const token = localStorage.getItem("token");
 
-    const response = await fetch(`${API}/api/events/create`, {
-      method: "POST",
+    const url = editingEvent
+      ? `${API}/api/events/update/${editingEvent._id}`
+      : `${API}/api/events/create`;
+
+    const method = editingEvent ? "PUT" : "POST";
+
+    const response = await fetch(url, {
+      method,
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
@@ -80,6 +75,7 @@ export default function Home() {
 
     if (response.ok) {
       setShowModal(false);
+      setEditingEvent(null);
       setTitle("");
       setDescription("");
       setDate("");
@@ -87,32 +83,26 @@ export default function Home() {
     }
   };
 
-  const handleDeleteEvent = async (eventId: string) => {
-    const confirmDelete = window.confirm(
-      "This will delete the event and ALL its memories. Are you sure?"
-    );
-
-    if (!confirmDelete) return;
-
+  const handleDeleteEvent = async (id: string) => {
     const token = localStorage.getItem("token");
 
-    await fetch(`${API}/api/events/delete/${eventId}`, {
+    if (!confirm("Delete this event and all memories?")) return;
+
+    await fetch(`${API}/api/events/delete/${id}`, {
       method: "DELETE",
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
+      headers: { Authorization: `Bearer ${token}` },
     });
 
-    setEvents((prev) =>
-      prev.filter((event) => event._id !== eventId)
-    );
+    setEvents(events.filter((event) => event._id !== id));
   };
 
-  const usedGB = storage ? (storage.used / 1024 / 1024 / 1024).toFixed(2) : "0";
-  const limitGB = storage ? (storage.limit / 1024 / 1024 / 1024).toFixed(0) : "25";
-  const remainingGB = storage
-    ? (storage.limit - storage.used) / 1024 / 1024 / 1024
-    : 0;
+  const usedGB = storage
+    ? (storage.used / 1024 / 1024 / 1024).toFixed(2)
+    : "0";
+
+  const limitGB = storage
+    ? (storage.limit / 1024 / 1024 / 1024).toFixed(0)
+    : "25";
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-black via-gray-900 to-black text-white p-10">
@@ -120,14 +110,11 @@ export default function Home() {
       {/* Header */}
       <div className="flex justify-between items-center mb-12">
         <div>
-          <h1 className="text-5xl font-bold">OG's Memory Vault</h1>
-
+          <h1 className="text-5xl font-bold">OG's Memories Vault</h1>
           {storage && (
-            <div className="mt-3 text-sm text-gray-400">
-              Storage Used: {usedGB} GB / {limitGB} GB  
-              <br />
-              Remaining: {remainingGB.toFixed(2)} GB
-            </div>
+            <p className="text-gray-400 mt-2">
+              Storage: {usedGB} GB / {limitGB} GB
+            </p>
           )}
         </div>
 
@@ -136,39 +123,51 @@ export default function Home() {
             localStorage.removeItem("token");
             router.replace("/auth");
           }}
-          className="bg-white text-black px-4 py-2 rounded-lg hover:bg-gray-300 transition"
+          className="bg-white text-black px-4 py-2 rounded-lg"
         >
           Logout
         </button>
       </div>
 
-      {/* Create Event Button */}
+      {/* Create Button */}
       <div className="flex justify-center mb-10">
         <button
-          onClick={() => setShowModal(true)}
+          onClick={() => {
+            setEditingEvent(null);
+            setShowModal(true);
+          }}
           className="bg-white/10 border border-white/20 px-6 py-3 rounded-xl hover:bg-white/20 transition"
         >
-          Create New Memory Event
+          Create Memory Event
         </button>
       </div>
 
-      {loading && (
-        <p className="text-center text-gray-400">Loading memories...</p>
-      )}
-
       {/* Event Grid */}
-      <div className="grid sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
         {events.map((event) => (
           <div
             key={event._id}
-            className="relative bg-white/10 backdrop-blur-lg border border-white/20 p-6 rounded-3xl shadow-xl hover:scale-105 transition-all duration-300"
+            className="relative bg-white/10 p-6 rounded-3xl hover:scale-105 transition"
           >
+            {/* Edit */}
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                handleDeleteEvent(event._id);
+                setEditingEvent(event);
+                setTitle(event.title);
+                setDescription(event.description);
+                setDate(event.date.split("T")[0]);
+                setShowModal(true);
               }}
-              className="absolute top-3 right-3 bg-red-600 text-white px-3 py-1 rounded-lg"
+              className="absolute top-3 left-3 bg-blue-600 px-3 py-1 rounded-lg"
+            >
+              Edit
+            </button>
+
+            {/* Delete */}
+            <button
+              onClick={() => handleDeleteEvent(event._id)}
+              className="absolute top-3 right-3 bg-red-600 px-3 py-1 rounded-lg"
             >
               Delete
             </button>
@@ -179,7 +178,7 @@ export default function Home() {
                   {event.title}
                 </h2>
 
-                <p className="text-gray-400 text-sm mb-4">
+                <p className="text-gray-400 text-sm mb-2">
                   {new Date(event.date).toDateString()}
                 </p>
 
@@ -192,12 +191,12 @@ export default function Home() {
         ))}
       </div>
 
-      {/* Create Event Modal */}
+      {/* Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center">
           <div className="bg-gray-900 p-8 rounded-2xl w-96 space-y-4">
             <h2 className="text-xl font-semibold">
-              Create New Event
+              {editingEvent ? "Edit Event" : "Create Event"}
             </h2>
 
             <input
@@ -231,10 +230,10 @@ export default function Home() {
               </button>
 
               <button
-                onClick={handleCreateEvent}
-                className="bg-white/20 px-4 py-2 rounded hover:bg-white/30"
+                onClick={handleSaveEvent}
+                className="bg-white/20 px-4 py-2 rounded"
               >
-                Create
+                {editingEvent ? "Update" : "Create"}
               </button>
             </div>
           </div>

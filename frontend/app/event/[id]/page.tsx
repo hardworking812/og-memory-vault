@@ -196,46 +196,50 @@ export default function EventPage() {
 
       {/* Fullscreen Modal */}
       {selected && (
+      <div className="fixed inset-0 bg-black/90 backdrop-blur-xl flex items-center justify-center z-50">
+
+        {/* Click outside overlay */}
         <div
-          className="fixed inset-0 bg-black/90 backdrop-blur-xl flex items-center justify-center z-50"
+          className="absolute inset-0"
           onClick={() => setSelected(null)}
+        />
+
+        <div
+          className="relative z-10 max-w-5xl w-full px-6"
+          onClick={(e) => e.stopPropagation()}
         >
-          <div
-            className="relative max-w-5xl w-full px-6"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="absolute top-4 right-4 flex gap-4">
-              <button
-                onClick={() => handleDownload(selected.fileUrl)}
-                className="bg-white/20 px-4 py-2 rounded-xl text-sm hover:bg-white/30 transition"
-              >
-                Download
-              </button>
+          <div className="absolute top-4 right-4 flex gap-4 z-20">
+            <button
+              onClick={() => handleDownload(selected.fileUrl)}
+              className="bg-white/20 px-4 py-2 rounded-xl text-sm hover:bg-white/30 transition"
+            >
+              Download
+            </button>
 
-              <button
-                onClick={() => setSelected(null)}
-                className="text-white text-2xl"
-              >
-                ✕
-              </button>
-            </div>
-
-            {selected.fileType === "image" ? (
-              <img
-                src={selected.fileUrl.replace("/upload/", "/upload/f_auto,q_auto/")}
-                className="w-full max-h-[90vh] object-contain rounded-2xl"
-              />
-            ) : (
-              <video
-                src={selected.fileUrl}
-                controls
-                autoPlay
-                className="w-full max-h-[90vh] rounded-2xl"
-              />
-            )}
+            <button
+              onClick={() => setSelected(null)}
+              className="text-white text-2xl"
+            >
+              ✕
+            </button>
           </div>
+
+          {selected.fileType === "image" ? (
+            <img
+              src={selected.fileUrl.replace("/upload/", "/upload/f_auto,q_auto/")}
+              className="w-full max-h-[90vh] object-contain rounded-2xl"
+            />
+          ) : (
+            <video
+              src={selected.fileUrl}
+              controls
+              autoPlay
+              className="w-full max-h-[90vh] rounded-2xl"
+            />
+          )}
         </div>
-      )}
+      </div>
+    )}
 
     </main>
   );
