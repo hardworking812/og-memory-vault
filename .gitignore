@@ -1,0 +1,19 @@
+# Node modules
+node_modules/
+
+# Next.js
+.next/
+
+# Logs
+logs
+*.log
+
+# Environment variables
+.env
+
+# Reels generated videos
+backend/reels/
+
+# OS files
+.DS_Store
+Thumbs.db
