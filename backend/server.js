@@ -3,6 +3,7 @@ const cors = require("cors");
 const mongoose = require("mongoose");
 const eventRoutes = require("./routes/eventRoutes");
 const mediaRoutes = require("./routes/mediaRoutes");
+const adminRoutes = require("./routes/adminRoutes");
 
 require("dotenv").config();
 
@@ -15,6 +16,7 @@ const authRoutes = require("./routes/authRoutes");
 app.use("/api/events", eventRoutes);
 app.use("/api/media", mediaRoutes);
 app.use("/api/auth", authRoutes);
+app.use("/api/admin", adminRoutes);
 
 
 
