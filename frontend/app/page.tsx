@@ -37,7 +37,7 @@ export default function Home() {
       return;
     }
 
-    fetch(`${API}/api/events`, {
+    fetch(`${API}/api/events/all`, {
       headers: {
         Authorization: `Bearer ${token}`,
       },
