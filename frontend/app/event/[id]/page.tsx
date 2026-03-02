@@ -159,7 +159,7 @@ export default function EventPage() {
           >
             {item.fileType === "image" ? (
               <img
-                src={item.fileUrl}
+                src={item.fileUrl.replace("/upload/", "/upload/f_auto,q_auto/")}
                 className="w-full h-72 object-cover"
               />
             ) : (
@@ -222,7 +222,7 @@ export default function EventPage() {
 
             {selected.fileType === "image" ? (
               <img
-                src={selected.fileUrl}
+                src={selected.fileUrl.replace("/upload/", "/upload/f_auto,q_auto/")}
                 className="w-full max-h-[90vh] object-contain rounded-2xl"
               />
             ) : (
