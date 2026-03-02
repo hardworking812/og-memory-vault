@@ -1,97 +1,86 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-interface Event {
-  _id: string;
-  title: string;
-  date: string;
-  description: string;
-}
-
-export default function HomePage() {
+export default function AuthPage() {
   const router = useRouter();
-  const [events, setEvents] = useState<Event[]>([]);
-  const [loading, setLoading] = useState(true);
-
   const API = process.env.NEXT_PUBLIC_API_URL;
 
-  // 🔐 Protect Route
-  useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (!token) {
-      router.push("/auth");
+  const [isLogin, setIsLogin] = useState(true);
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+
+  const handleSubmit = async () => {
+    const endpoint = isLogin ? "/api/auth/login" : "/api/auth/register";
+
+    const response = await fetch(`${API}${endpoint}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(
+        isLogin ? { email, password } : { name, email, password }
+      ),
+    });
+
+    const data = await response.json();
+
+    if (response.ok) {
+      localStorage.setItem("token", data.token);
+      router.replace("/");
     } else {
-      fetchEvents();
-    }
-  }, []);
-
-  // 📦 Fetch Events
-  const fetchEvents = async () => {
-    try {
-      const res = await fetch(`${API}/api/events`, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
-      });
-
-      if (!res.ok) {
-        router.push("/auth");
-        return;
-      }
-
-      const data = await res.json();
-      setEvents(data);
-      setLoading(false);
-    } catch (err) {
-      console.error(err);
-      setLoading(false);
+      alert(data.message || "Something went wrong");
     }
   };
-
-  // 🚪 Logout
-  const handleLogout = () => {
-    localStorage.removeItem("token");
-    router.push("/auth");
-  };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-black flex items-center justify-center text-white">
-        Loading Vault...
-      </div>
-    );
-  }
 
   return (
-    <main className="min-h-screen bg-black text-white p-10">
-      {/* Header */}
-      <div className="flex justify-between items-center mb-10">
-        <h1 className="text-4xl font-bold">OG Memory Vault</h1>
-        <button
-          onClick={handleLogout}
-          className="bg-white text-black px-4 py-2 rounded-lg hover:bg-gray-300 transition"
-        >
-          Logout
-        </button>
-      </div>
+    <main className="min-h-screen bg-black text-white flex items-center justify-center">
+      <div className="bg-white/10 backdrop-blur-xl p-8 rounded-2xl w-96 space-y-4 border border-white/20">
+        <h1 className="text-2xl font-bold text-center">
+          {isLogin ? "Login" : "Register"}
+        </h1>
 
-      {/* Events Grid */}
-      <div className="grid md:grid-cols-3 gap-6">
-        {events.map((event) => (
-          <div
-            key={event._id}
-            onClick={() => router.push(`/event/${event._id}`)}
-            className="bg-zinc-900 p-6 rounded-2xl border border-zinc-700 hover:border-white transition cursor-pointer shadow-xl"
-          >
-            <h2 className="text-xl font-semibold mb-2">{event.title}</h2>
-            <p className="text-gray-400 mb-2">
-              {new Date(event.date).toDateString()}
-            </p>
-            <p className="text-gray-300">{event.description}</p>
-          </div>
-        ))}
+        {!isLogin && (
+          <input
+            type="text"
+            placeholder="Name"
+            className="w-full p-2 bg-black border border-gray-700 rounded"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+          />
+        )}
+
+        <input
+          type="email"
+          placeholder="Email"
+          className="w-full p-2 bg-black border border-gray-700 rounded"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+        />
+
+        <input
+          type="password"
+          placeholder="Password"
+          className="w-full p-2 bg-black border border-gray-700 rounded"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+        />
+
+        <button
+          onClick={handleSubmit}
+          className="w-full bg-white text-black py-2 rounded-lg font-semibold"
+        >
+          {isLogin ? "Login" : "Register"}
+        </button>
+
+        <p
+          className="text-center text-gray-400 cursor-pointer"
+          onClick={() => setIsLogin(!isLogin)}
+        >
+          {isLogin
+            ? "Don't have an account? Register"
+            : "Already have an account? Login"}
+        </p>
       </div>
     </main>
   );
