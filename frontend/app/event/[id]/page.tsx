@@ -60,8 +60,8 @@ export default function EventPage() {
       body: formData,
     });
 
-    const newMedia = await res.json();
-    setMedia((prev) => [newMedia, ...prev]);
+    const data = await res.json();
+    setMedia((prev) => [data.media, ...prev]);
   };
 
   const handleDelete = async (mediaId: string) => {
@@ -75,6 +75,17 @@ export default function EventPage() {
     });
 
     setMedia((prev) => prev.filter((m) => m._id !== mediaId));
+  };
+
+  const handleDownload = async (url: string) => {
+    const response = await fetch(url);
+    const blob = await response.blob();
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = "memory";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   return (
@@ -94,7 +105,7 @@ export default function EventPage() {
         <div />
       </div>
 
-      {/* Upload Box */}
+      {/* Upload Section */}
       <div className="max-w-6xl mx-auto mb-12">
         <label className="flex flex-col items-center justify-center border-2 border-dashed border-white/20 rounded-3xl p-10 cursor-pointer hover:bg-white/5 transition backdrop-blur-lg">
           <span className="text-lg mb-2">Upload Memories</span>
@@ -130,6 +141,18 @@ export default function EventPage() {
               />
             )}
 
+            {/* Download Button */}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleDownload(item.fileUrl);
+              }}
+              className="absolute top-4 left-4 opacity-0 group-hover:opacity-100 transition bg-white/20 px-3 py-1 rounded-lg text-sm"
+            >
+              Download
+            </button>
+
+            {/* Delete Button */}
             <button
               onClick={(e) => {
                 e.stopPropagation();
@@ -143,22 +166,31 @@ export default function EventPage() {
         ))}
       </div>
 
-      {/* FULLSCREEN MODAL */}
+      {/* Fullscreen Modal */}
       {selected && (
         <div
-          className="fixed inset-0 bg-black/90 backdrop-blur-xl flex items-center justify-center z-50 animate-fade"
+          className="fixed inset-0 bg-black/90 backdrop-blur-xl flex items-center justify-center z-50"
           onClick={() => setSelected(null)}
         >
           <div
             className="relative max-w-5xl w-full px-6"
             onClick={(e) => e.stopPropagation()}
           >
-            <button
-              onClick={() => setSelected(null)}
-              className="absolute top-4 right-4 text-white text-2xl"
-            >
-              ✕
-            </button>
+            <div className="absolute top-4 right-4 flex gap-4">
+              <button
+                onClick={() => handleDownload(selected.fileUrl)}
+                className="bg-white/20 px-4 py-2 rounded-xl text-sm hover:bg-white/30 transition"
+              >
+                Download
+              </button>
+
+              <button
+                onClick={() => setSelected(null)}
+                className="text-white text-2xl"
+              >
+                ✕
+              </button>
+            </div>
 
             {selected.fileType === "image" ? (
               <img
