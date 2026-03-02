@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 interface EventType {
   _id: string;
@@ -11,55 +12,75 @@ interface EventType {
 }
 
 export default function Home() {
+  const router = useRouter();
   const [events, setEvents] = useState<EventType[]>([]);
   const [loading, setLoading] = useState(true);
+  const [mounted, setMounted] = useState(false);
   const [showModal, setShowModal] = useState(false);
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [date, setDate] = useState("");
 
-  // Fetch Events
-  const fetchEvents = () => {
-    fetch("http://localhost:5000/api/events/all")
-      .then((res) => res.json())
-      .then((data) => {
-        setEvents(data);
-        setLoading(false);
-      })
-      .catch((err) => {
-        console.error(err);
-        setLoading(false);
-      });
-  };
+  const API = process.env.NEXT_PUBLIC_API_URL;
 
   useEffect(() => {
-    fetchEvents();
+    setMounted(true);
   }, []);
 
-  // Create Event
+  useEffect(() => {
+    if (!mounted) return;
+
+    const token = localStorage.getItem("token");
+    if (!token) {
+      router.replace("/auth");
+      return;
+    }
+
+    fetch(`${API}/api/events`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    })
+      .then((res) => {
+        if (!res.ok) {
+          router.replace("/auth");
+          return null;
+        }
+        return res.json();
+      })
+      .then((data) => {
+        if (data) setEvents(data);
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+  }, [mounted]);
+
+  if (!mounted) return null;
+
   const handleCreateEvent = async () => {
     if (!title || !date) return;
 
-    const response = await fetch(
-      "http://localhost:5000/api/events/create",
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, description, date }),
-      }
-    );
+    const token = localStorage.getItem("token");
+
+    const response = await fetch(`${API}/api/events/create`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ title, description, date }),
+    });
 
     if (response.ok) {
       setShowModal(false);
       setTitle("");
       setDescription("");
       setDate("");
-      fetchEvents();
+      window.location.reload();
     }
   };
 
-  // Delete Event
   const handleDeleteEvent = async (eventId: string) => {
     const confirmDelete = window.confirm(
       "This will delete the event and ALL its memories. Are you sure?"
@@ -67,25 +88,44 @@ export default function Home() {
 
     if (!confirmDelete) return;
 
-    await fetch(
-      `http://localhost:5000/api/events/delete/${eventId}`,
-      { method: "DELETE" }
-    );
+    const token = localStorage.getItem("token");
+
+    await fetch(`${API}/api/events/delete/${eventId}`, {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
 
     setEvents((prev) =>
       prev.filter((event) => event._id !== eventId)
     );
   };
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center text-white">
+        Loading memories...
+      </div>
+    );
+  }
+
   return (
     <main className="min-h-screen bg-gradient-to-br from-black via-gray-900 to-black text-white p-10">
 
-      {/* Title */}
-      <h1 className="text-5xl font-bold text-center mb-12">
-        OG Memory Vault
-      </h1>
+      <div className="flex justify-between items-center mb-12">
+        <h1 className="text-5xl font-bold">OG Memory Vault</h1>
+        <button
+          onClick={() => {
+            localStorage.removeItem("token");
+            router.replace("/auth");
+          }}
+          className="bg-white text-black px-4 py-2 rounded-lg"
+        >
+          Logout
+        </button>
+      </div>
 
-      {/* Create Event Button */}
       <div className="flex justify-center mb-10">
         <button
           onClick={() => setShowModal(true)}
@@ -95,18 +135,12 @@ export default function Home() {
         </button>
       </div>
 
-      {loading && (
-        <p className="text-center text-gray-400">Loading memories...</p>
-      )}
-
-      {/* Event Grid */}
       <div className="grid sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
         {events.map((event) => (
           <div
             key={event._id}
             className="relative bg-white/10 backdrop-blur-lg border border-white/20 p-6 rounded-3xl shadow-xl hover:scale-105 transition-all duration-300"
           >
-            {/* Delete Button */}
             <button
               onClick={(e) => {
                 e.stopPropagation();
@@ -136,7 +170,6 @@ export default function Home() {
         ))}
       </div>
 
-      {/* Create Event Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
           <div className="bg-gray-900 p-8 rounded-2xl w-96 space-y-4">
@@ -184,7 +217,6 @@ export default function Home() {
           </div>
         </div>
       )}
-
     </main>
   );
 }

@@ -3,6 +3,7 @@ const router = express.Router();
 const multer = require("multer");
 const cloudinary = require("../config/cloudinary");
 const Media = require("../models/Media");
+const authMiddleware = require("../middleware/authMiddleware");
 
 // Store file in memory (keeps original resolution)
 const storage = multer.memoryStorage();
@@ -11,7 +12,7 @@ const upload = multer({ storage });
 /* =========================================
    Upload Media
 ========================================= */
-router.post("/upload/:eventId", upload.single("file"), async (req, res) => {
+router.post("/upload/:eventId",authMiddleware, upload.single("file"), async (req, res) => {
   try {
     const { eventId } = req.params;
 
@@ -57,7 +58,7 @@ router.post("/upload/:eventId", upload.single("file"), async (req, res) => {
 /* =========================================
    Get Media By Event
 ========================================= */
-router.get("/event/:eventId", async (req, res) => {
+router.get("/event/:eventId",authMiddleware, async (req, res) => {
   try {
     const { eventId } = req.params;
 
@@ -71,7 +72,7 @@ router.get("/event/:eventId", async (req, res) => {
 });
 
 // Delete Media
-router.delete("/delete/:mediaId", async (req, res) => {
+router.delete("/delete/:mediaId",authMiddleware, async (req, res) => {
   try {
     const { mediaId } = req.params;
 

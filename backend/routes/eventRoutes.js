@@ -1,9 +1,10 @@
 const express = require("express");
 const router = express.Router();
 const Event = require("../models/Event");
+const authMiddleware = require("../middleware/authMiddleware");
 
 // Create Event
-router.post("/create", async (req, res) => {
+router.post("/create",authMiddleware, async (req, res) => {
   try {
     const { title, date, description } = req.body;
 
@@ -26,7 +27,7 @@ router.post("/create", async (req, res) => {
 });
 
 // Get All Events
-router.get("/all", async (req, res) => {
+router.get("/all",authMiddleware, async (req, res) => {
   try {
     const events = await Event.find().sort({ createdAt: -1 });
     res.status(200).json(events);
@@ -37,7 +38,7 @@ router.get("/all", async (req, res) => {
 
 // Delete Event
 // Delete Event
-router.delete("/delete/:eventId", async (req, res) => {
+router.delete("/delete/:eventId",authMiddleware, async (req, res) => {
   try {
     const { eventId } = req.params;
 
