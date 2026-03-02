@@ -31,3 +31,7 @@ app.get("/", (req, res) => {
 app.listen(5000, () => {
   console.log("Server running on port 5000");
 });
+
+app.get("/test123", (req, res) => {
+  res.send("Admin route test working");
+});
