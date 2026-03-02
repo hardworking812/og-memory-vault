@@ -120,7 +120,7 @@ export default function Home() {
       {/* Header */}
       <div className="flex justify-between items-center mb-12">
         <div>
-          <h1 className="text-5xl font-bold">OG Memory Vault</h1>
+          <h1 className="text-5xl font-bold">OG's Memory Vault</h1>
 
           {storage && (
             <div className="mt-3 text-sm text-gray-400">
